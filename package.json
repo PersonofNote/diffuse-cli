@@ -1,0 +1,30 @@
+{
+  "name": "@personofnote/diffuse",
+  "version": "0.1.3",
+  "private": false,
+  "license": "MIT",
+  "description": "Static risk analysis tool for code changes - analyzes breaking changes and usage patterns",
+  "author": "Jessica Martin",
+  "main": "dist/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "diffuse": "bin/diffuse.js"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^14.0.0",
+    "ts-morph": "^26.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
