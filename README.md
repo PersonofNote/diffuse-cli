@@ -33,8 +33,8 @@ These factors are aggregated and assigned weighted points, then a final score is
 
 ### Current Features:
 
-- Single repository analysis (cross-repo analysis available in Pro version)
-- TypeScript support with comprehensive breaking change detection
+- Single repository analysis
+- TypeScript support
 - Usage graph analysis within the repository
 - Test coverage detection
 - Multiple output formats (terminal, markdown)
