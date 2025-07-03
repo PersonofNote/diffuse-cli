@@ -44,24 +44,6 @@ These factors are aggregated and assigned weighted points, then a final score is
 
 TypeScript is currently the only supported language. If there's enough interest in this project, I plan to expand to fully support plain JavaScript, and then outward to Python and others.
 
-## Demo
-
-See Diffuse in action with our demo app! The demo showcases subtle but critical breaking changes that Diffuse can detect:
-
-```bash
-cd demo-app
-./demo.sh
-```
-
-The demo includes:
-- Type narrowing (adding new enum values)
-- Return type changes (string → string | null)
-- Props changes (adding required fields)
-- Export removals (deleting public API methods)
-- Large changes (significant file modifications)
-
-**Demo Results**: Diffuse detected 66 risk points (High Risk) across 5 files, identifying multiple breaking changes that could cause runtime failures.
-
 ## Installation
 
 ```bash
