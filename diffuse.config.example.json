@@ -1,0 +1,31 @@
+{
+  "riskWeights": {
+    "PROPS_CHANGED": 15,
+    "RETURN_TYPE_CHANGED": 12,
+    "MISSING_TEST": 6,
+    "LARGE_CHANGE": 10
+  },
+  "thresholds": {
+    "highRisk": 70,
+    "mediumRisk": 45,
+    "veryHighRisk": 90,
+    "largeChangePercentage": 25
+  },
+  "exclusions": {
+    "files": ["*.generated.ts", "*.d.ts"],
+    "directories": ["vendor", "third-party"],
+    "testPatterns": ["*.integration.test.ts"]
+  },
+  "analysis": {
+    "includeTestCoverage": true,
+    "includeUsageGraph": true,
+    "maxFilesInGraph": 1000
+  },
+  "reporting": {
+    "includeSuggestions": true,
+    "verboseStats": false,
+    "customSuggestions": {
+      "PROPS_CHANGED": "Custom suggestion: Review all component consumers and update prop types accordingly."
+    }
+  }
+}

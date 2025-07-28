@@ -1,8 +1,9 @@
 import path from "path";
 import { Project } from "ts-morph";
-import { RiskFactorType, riskWeights, ScoredRisk } from "./constants.js";
+import { RiskFactorType, ScoredRisk } from "./constants.js";
 import { formatImportList, RenderContext } from "./setup/detectGithub.js";
 import { FileFilter } from "./utils/index.js";
+import { ResolvedConfig } from "./config.js";
 
 type GraphType =   {
   exports: string[];
@@ -178,7 +179,7 @@ function getMaxDependencyDepth(graph: UsageGraph, filePath: string): number {
 }
 
 
-export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], context?: RenderContext, options?: { verbose: boolean }): {
+export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], context?: RenderContext, options?: { verbose: boolean }, config?: ResolvedConfig): {
   totalScore: number;
   graphScore: ScoredRisk[];
 } {
@@ -201,7 +202,7 @@ export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], c
 
     if (dependents.length === 0) continue;
 
-    const radiusScore = radius * riskWeights[RiskFactorType.ImportedInFiles];
+    const radiusScore = radius * (config?.riskWeights[RiskFactorType.ImportedInFiles] ?? 1.2);
     const list = formatImportList(dependents, context, options?.verbose);
 
 
@@ -209,7 +210,7 @@ export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], c
       scores.push({
         subject: file,
         factor: RiskFactorType.UsedInMultipleTrees,
-        points: riskWeights[RiskFactorType.UsedInMultipleTrees],
+        points: config?.riskWeights[RiskFactorType.UsedInMultipleTrees] ?? 5,
         explanation: `Used across ${graph[absPath]?.subsystem.length} project areas ${options?.verbose ? `(${[...graph[absPath]?.subsystem].join(', ')})` : ''}`,
       });
     }

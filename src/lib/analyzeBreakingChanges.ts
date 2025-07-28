@@ -6,9 +6,10 @@ import {
   SourceFile,
   TypeFormatFlags,
 } from "ts-morph";
-import { ScoredRisk, RiskFactorType, riskWeights } from "./constants.js";
+import { ScoredRisk, RiskFactorType } from "./constants.js";
 import { FileChange } from "./setup/getChangedFilesWithStatus.js";
 import { FileFilter } from "./utils/index.js";
+import { ResolvedConfig } from "./config.js";
 
 export type FileContentProvider = {
   getOldCode: (filePath: string) => string;
@@ -18,7 +19,8 @@ export type FileContentProvider = {
 export function analyzeBreakingChanges(
   files: FileChange[],
   project: Project,
-  options: FileContentProvider & { verbose: boolean, includeTests: boolean }
+  options: FileContentProvider & { verbose: boolean, includeTests: boolean },
+  config: ResolvedConfig
 ): { issues: string[]; scores: any; totalScore: number; skippedFiles: { unsupported: string[], failed: string[], empty: string[], tests: string[] } } {
   const issues: string[] = [];
   const scores: any = {};
@@ -79,12 +81,12 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileRemoved,
-            points: riskWeights[RiskFactorType.FileRemoved],
+            points: config.riskWeights[RiskFactorType.FileRemoved],
             explanation: `File \`${file.path}\` was removed`,
           }
         ]
       };
-      totalScore += riskWeights[RiskFactorType.FileRemoved];
+      totalScore += config.riskWeights[RiskFactorType.FileRemoved];
       continue; // no need to fetch contents or analyze further
     }
 
@@ -96,12 +98,12 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileAdded,
-            points: riskWeights[RiskFactorType.FileAdded],
+            points: config.riskWeights[RiskFactorType.FileAdded],
             explanation: `File \`${file.path}\` was added`,
           }
         ]
       };
-      totalScore += riskWeights[RiskFactorType.FileAdded];
+      totalScore += config.riskWeights[RiskFactorType.FileAdded];
     }
 
     // Flag renames
@@ -112,12 +114,12 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileRenamed,
-            points: riskWeights[RiskFactorType.FileRenamed],
+            points: config.riskWeights[RiskFactorType.FileRenamed],
             explanation: `File \`${file.path}\` was renamed from \`${file.renamedFrom}\``,
           }
         ]
       };
-      totalScore += riskWeights[RiskFactorType.FileRenamed];
+      totalScore += config.riskWeights[RiskFactorType.FileRenamed];
     }
   
     
@@ -130,7 +132,7 @@ export function analyzeBreakingChanges(
       overwrite: true,
     });
     
-    const { issues: fileIssues, changedExports, scores: fileScores, fileScore } = analyzeFile(newSourceFile, oldSourceFile, project);
+    const { issues: fileIssues, changedExports, scores: fileScores, fileScore } = analyzeFile(newSourceFile, oldSourceFile, project, config);
 
     if (fileIssues.length > 0) {
       issues.push(`\n\n### \`${file.path}\`\n` + fileIssues.map(i => `- ${i}`).join("\n"));
@@ -156,7 +158,7 @@ export function analyzeBreakingChanges(
           scores[file.path].scores.push({
             subject: file.path,
             factor: RiskFactorType.MissingTest,
-            points: riskWeights[RiskFactorType.MissingTest],
+            points: config.riskWeights[RiskFactorType.MissingTest],
             explanation: `No associated test changes`,
           });
         } else { 
@@ -165,14 +167,14 @@ export function analyzeBreakingChanges(
               {
                 subject: file.path,
                 factor: RiskFactorType.MissingTest,
-                points: riskWeights[RiskFactorType.MissingTest],
+                points: config.riskWeights[RiskFactorType.MissingTest],
                 explanation: `No associated test changes`,
               }
             ]
           };
         };
-        scores[file.path].fileScore += riskWeights[RiskFactorType.MissingTest];
-        totalScore += riskWeights[RiskFactorType.MissingTest];
+        scores[file.path].fileScore += config.riskWeights[RiskFactorType.MissingTest];
+        totalScore += config.riskWeights[RiskFactorType.MissingTest];
       }
   }
 }
@@ -183,7 +185,8 @@ export function analyzeBreakingChanges(
 export function analyzeFile(
   newSourceFile: SourceFile,
   oldSourceFile: SourceFile,
-  project: Project
+  project: Project,
+  config: ResolvedConfig
 ): { issues: string[]; changedExports: string[]; scores: ScoredRisk[]; fileScore: number } {
   const issues: string[] = [];
   const changedExports: string[] = []; // Collect for test detection
@@ -208,20 +211,20 @@ export function analyzeFile(
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportAdded,
-        points: riskWeights[RiskFactorType.ExportAdded],
+        points: config.riskWeights[RiskFactorType.ExportAdded],
         explanation: `Export \`${name}\` was added`,
       });
-      fileScore += riskWeights[RiskFactorType.ExportAdded];
+      fileScore += config.riskWeights[RiskFactorType.ExportAdded];
     } else if (oldDecl && !newDecl) {
       changedExports.push(name);
       issues.push(`Export \`${name}\` was removed`);
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportRemoved,
-        points: riskWeights[RiskFactorType.ExportRemoved],
+        points: config.riskWeights[RiskFactorType.ExportRemoved],
         explanation: `Export \`${name}\` was removed`,
       });
-      fileScore += riskWeights[RiskFactorType.ExportRemoved];
+      fileScore += config.riskWeights[RiskFactorType.ExportRemoved];
     }
 
     const kind = newDecl?.getKindName();
@@ -237,10 +240,10 @@ export function analyzeFile(
       scores.push(...changes.map(c => ({
         subject: name,
         factor: RiskFactorType.ReturnTypeChanged,
-        points: riskWeights[RiskFactorType.ReturnTypeChanged],
+        points: config.riskWeights[RiskFactorType.ReturnTypeChanged],
         explanation: `Return type changed in \`${name}\``,
       })));
-      fileScore += changes.length * riskWeights[RiskFactorType.ReturnTypeChanged];
+      fileScore += changes.length * config.riskWeights[RiskFactorType.ReturnTypeChanged];
     }
 
     if (kind === "InterfaceDeclaration") {
@@ -253,10 +256,10 @@ export function analyzeFile(
       scores.push(...changes.map(c => ({
         subject: name,
         factor: RiskFactorType.PropsChanged,
-        points: riskWeights[RiskFactorType.PropsChanged],
+        points: config.riskWeights[RiskFactorType.PropsChanged],
         explanation: `Props changed in \`${name}\``,
       })));
-      fileScore += changes.length * riskWeights[RiskFactorType.PropsChanged];
+      fileScore += changes.length * config.riskWeights[RiskFactorType.PropsChanged];
     }
   }
     */
@@ -271,10 +274,10 @@ export function analyzeFile(
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportAdded,
-        points: riskWeights[RiskFactorType.ExportAdded],
+        points: config.riskWeights[RiskFactorType.ExportAdded],
         explanation: `Export \`${name}\` was added`,
       });
-      fileScore += riskWeights[RiskFactorType.ExportAdded];
+      fileScore += config.riskWeights[RiskFactorType.ExportAdded];
       continue; // no need to compare further
     }
   
@@ -285,10 +288,10 @@ export function analyzeFile(
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportRemoved,
-        points: riskWeights[RiskFactorType.ExportRemoved],
+        points: config.riskWeights[RiskFactorType.ExportRemoved],
         explanation: `Export \`${name}\` was removed`,
       });
-      fileScore += riskWeights[RiskFactorType.ExportRemoved];
+      fileScore += config.riskWeights[RiskFactorType.ExportRemoved];
       continue;
     }
   
@@ -311,10 +314,10 @@ export function analyzeFile(
         scores.push(...changes.map(c => ({
           subject: name,
           factor: RiskFactorType.ReturnTypeChanged,
-          points: riskWeights[RiskFactorType.ReturnTypeChanged],
+          points: config.riskWeights[RiskFactorType.ReturnTypeChanged],
           explanation: `Return type changed in \`${name}\``,
         })));
-        fileScore += changes.length * riskWeights[RiskFactorType.ReturnTypeChanged];
+        fileScore += changes.length * config.riskWeights[RiskFactorType.ReturnTypeChanged];
       }
     } else if (kindOld === "InterfaceDeclaration" && kindNew === "InterfaceDeclaration") {
       const changes = compareInterfaces(
@@ -327,10 +330,10 @@ export function analyzeFile(
         scores.push(...changes.map(c => ({
           subject: name,
           factor: RiskFactorType.PropsChanged,
-          points: riskWeights[RiskFactorType.PropsChanged],
+          points: config.riskWeights[RiskFactorType.PropsChanged],
           explanation: `Props changed in \`${name}\``,
         })));
-        fileScore += changes.length * riskWeights[RiskFactorType.PropsChanged];
+        fileScore += changes.length * config.riskWeights[RiskFactorType.PropsChanged];
       }
     } else {
      // TODO: Handle other kinds

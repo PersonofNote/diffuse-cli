@@ -2,24 +2,27 @@ import chalk from 'chalk';
 import { ScoredRisk } from './constants.js';
 import { RenderContext } from './setup/detectGithub.js';
 import { riskSuggestions, RiskFactorType, riskWeights, encodeGitHubFilePath, escapeMarkdownLinkText } from './constants.js';
+import { ResolvedConfig } from './config.js';
 
 
-function riskLevel(score: number, mode: 'terminal' | 'markdown' = 'terminal'): string {
+function riskLevel(score: number, mode: 'terminal' | 'markdown' = 'terminal', config?: ResolvedConfig): string {
+  const thresholds = config?.thresholds || { veryHighRisk: 80, highRisk: 60, mediumRisk: 40 };
+  
   if (mode === 'terminal') {
-    if (score >= 80) return chalk.magenta('🔥 Very High Risk');
-    if (score >= 60) return chalk.red('⚠️ High Risk');
-    if (score >= 40) return chalk.yellow('🟡 Medium Risk');
+    if (score >= thresholds.veryHighRisk) return chalk.magenta('🔥 Very High Risk');
+    if (score >= thresholds.highRisk) return chalk.red('⚠️ High Risk');
+    if (score >= thresholds.mediumRisk) return chalk.yellow('🟡 Medium Risk');
     return chalk.green('✅ Low Risk');
   } else {
-    if (score >= 80) return '🔥 **Very High Risk**';
-    if (score >= 60) return '⚠️ **High Risk**';
-    if (score >= 40) return '🟡 **Medium Risk**';
+    if (score >= thresholds.veryHighRisk) return '🔥 **Very High Risk**';
+    if (score >= thresholds.highRisk) return '⚠️ **High Risk**';
+    if (score >= thresholds.mediumRisk) return '🟡 **Medium Risk**';
     return '✅ **Low Risk**';
   }
 }
 
-function extractSummary(fileRisks: Record<string, { total: number; risks: ScoredRisk[] }>, lineStats: Record<string, { added: number, removed: number, totalLines: number }> = {}) {
-  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = 20;
+function extractSummary(fileRisks: Record<string, { total: number; risks: ScoredRisk[] }>, lineStats: Record<string, { added: number, removed: number, totalLines: number }> = {}, config?: ResolvedConfig) {
+  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = config?.thresholds.largeChangePercentage ?? 20;
   
   const finalScores = Object.entries(fileRisks).map(([file, { total, risks }]) => {
     const stats = lineStats[file] || { added: 0, removed: 0, totalLines: 0 };
@@ -78,10 +81,10 @@ function getFileRisks(data: any): Record<string, { total: number; risks: ScoredR
   return fileRisks;
 }
 // TODO: if we omit tests, we end up teling users we analyzed a smaller number of files than we did. Maybe remove suggestion and add 0 points but still return the file?
-export function generateTerminalReport(data: any, options?: { suggestions?: boolean, verbose?: boolean, tests?: boolean }): string {
+export function generateTerminalReport(data: any, options?: { suggestions?: boolean, verbose?: boolean, tests?: boolean }, config?: ResolvedConfig): string {
   const fileRisks = getFileRisks(data);
   const lineStats = data.lineStats || {};
-  const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats);
+  const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats, config);
   
   // Calculate final scores including Large Change factor for sorting
   const finalScores = Object.entries(fileRisks).map(([file, { total, risks }]) => {
@@ -101,7 +104,7 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
   finalScores.sort((a, b) => b.finalScore - a.finalScore);
   
   const averageRisk = data.totalRiskScore / totalFiles;
-  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = 20; // 20% of file changed
+  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = config?.thresholds.largeChangePercentage ?? 20;
 
   let output = '\n' + chalk.bold.underline('🚨 RISK ANALYSIS REPORT\n') + '\n';
   
@@ -113,8 +116,8 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
     output += `Git found ${totalFiles + totalSkipped} files, including metadata, ghost changes, tests, and unsupported file extensions. ${totalFiles} were analyzed\n\n`;
   }
 
-  output += `Overall Risk Score: ${chalk.bold(data.totalRiskScore.toFixed(2))} ${riskLevel(data.totalRiskScore)}\n`;
-  output += `Average Risk Score: ${chalk.bold(averageRisk.toFixed(2))} ${riskLevel(averageRisk)}\n`;
+  output += `Overall Risk Score: ${chalk.bold(data.totalRiskScore.toFixed(2))} ${riskLevel(data.totalRiskScore, 'terminal', config)}\n`;
+  output += `Average Risk Score: ${chalk.bold(averageRisk.toFixed(2))} ${riskLevel(averageRisk, 'terminal', config)}\n`;
 
   if (data.totalRiskScore >= 60 && averageRisk < 40) {
     output += `\n${chalk.bold.red('Note: This PR touches many files with individually low-risk changes.\nThe volume increases review complexity and regression risk.\n')}`;
@@ -141,7 +144,7 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
     }
     output += `\n${chalk.bold(file)}\n`;
     output += `Lines changed: +${chalk.green(stats.added)}/-${chalk.red(stats.removed)} (${percentageChanged.toFixed(1)}% of ${stats.totalLines} lines)\n`;
-    output += `Total Score: ${chalk.bold(finalScore.toFixed(2))} ${riskLevel(finalScore)}\n`;
+    output += `Total Score: ${chalk.bold(finalScore.toFixed(2))} ${riskLevel(finalScore, 'terminal', config)}\n`;
     for (const risk of fileRisksWithLarge) {
       const importCount = Math.round(risk.points / riskWeights[RiskFactorType.ImportedInFiles]);
       let suggestion = '';
@@ -162,14 +165,13 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
   output += '\n';
   output += '\n---\n';
   output += 'This report was generated by Diffuse (Open Source)\n';
-  output += 'Got feedback? [I\'d love to hear it](https://docs.google.com/forms/d/e/1FAIpQLScu4x26hKju8MhxG6dhSctWDuG7A3RT0DrckzyK0E_optgZmA/viewform?usp=header)\n';
   return output;
 }
 
-export function generateMarkdownReport(data: any, context?: RenderContext, options?: { suggestions?: boolean, tests?: boolean, verbose?: boolean }): string {
+export function generateMarkdownReport(data: any, context?: RenderContext, options?: { suggestions?: boolean, tests?: boolean, verbose?: boolean }, config?: ResolvedConfig): string {
   const fileRisks = getFileRisks(data);
   const lineStats = data.lineStats || {};
-  const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats);
+  const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats, config);
   
   // Calculate final scores including Large Change factor for sorting
   const finalScores = Object.entries(fileRisks).map(([file, { total, risks }]) => {
@@ -189,7 +191,7 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
   finalScores.sort((a, b) => b.finalScore - a.finalScore);
   
   const averageRisk = data.totalRiskScore / totalFiles;
-  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = 20; // 20% of file changed
+  const LARGE_CHANGE_PERCENTAGE_THRESHOLD = config?.thresholds.largeChangePercentage ?? 20;
 
   let output = `# 🚨 RISK ANALYSIS REPORT\n\n`;
   const totalSkipped = Object.values(data.breakingChanges.skippedFiles).flat().length;
@@ -201,8 +203,8 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
   }
 
  
-  output += `**Overall Risk Score:** ${data.totalRiskScore.toFixed(2)} — ${riskLevel(data.totalRiskScore, 'markdown')}\n`;
-  output += `**Average Risk Score:** ${averageRisk.toFixed(2)} — ${riskLevel(averageRisk, 'markdown')}\n`;
+  output += `**Overall Risk Score:** ${data.totalRiskScore.toFixed(2)} — ${riskLevel(data.totalRiskScore, 'markdown', config)}\n`;
+  output += `**Average Risk Score:** ${averageRisk.toFixed(2)} — ${riskLevel(averageRisk, 'markdown', config)}\n`;
 
   if (data.totalRiskScore >= 60 && averageRisk < 40) {
     output += `\n> ⚠️ *This PR touches many files with individually low-risk changes. The volume increases review complexity and regression risk.*\n`;
@@ -229,7 +231,7 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
     }
     output += `\n## ${file}\n`;
     output += `**Lines changed:** +${stats.added}/-${stats.removed} (${percentageChanged.toFixed(1)}% of ${stats.totalLines} lines)\n`;
-    output += `**Total Score:** ${finalScore.toFixed(2)} — ${riskLevel(finalScore, 'markdown')}\n\n`;
+    output += `**Total Score:** ${finalScore.toFixed(2)} — ${riskLevel(finalScore, 'markdown', config)}\n\n`;
     for (const risk of fileRisksWithLarge) {
       const importCount = Math.round(risk.points / riskWeights[RiskFactorType.ImportedInFiles]);
       let suggestion = '';
@@ -265,6 +267,6 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
   return output;
 }
 
-export function generateReport(data: any, context?: RenderContext, options?: { suggestions?: boolean }): string {
-  return context?.repoUrl ? generateMarkdownReport(data, context, options) : generateTerminalReport(data, options);
+export function generateReport(data: any, context?: RenderContext, options?: { suggestions?: boolean }, config?: ResolvedConfig): string {
+  return context?.repoUrl ? generateMarkdownReport(data, context, options, config) : generateTerminalReport(data, options, config);
 }

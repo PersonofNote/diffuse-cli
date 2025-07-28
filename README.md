@@ -44,6 +44,9 @@ These factors are aggregated and assigned weighted points, then a final score is
 
 TypeScript is currently the only supported language. If there's enough interest in this project, I plan to expand to fully support plain JavaScript, and then outward to Python and others.
 
+### Planned features
+Cross-repo analysis would really help this project, but requires infrastructure, and may need to be reserved for an eventual pro tier. Also hot file analysis, flagging when a file has been involved in a bunch of recent PRs.
+
 ## Installation
 
 ```bash
@@ -96,12 +99,109 @@ jobs:
 |------|-------------|
 | `--since <branch>` | Analyze changes since this git branch/ref |
 | `--output <file>` | Write report output to a file |
+| `--config <file>` | Path to configuration file |
 | `--format <type>` | Output format: markdown or plain (default: plain) |
 | `--fail-on-high-risk` | Exit with non-zero status if overall risk is high |
 | `--no-suggestions` | Suppress suggestions in output |
 | `--no-tests` | Exclude tests from scoring |
 | `--verbose` | Enable verbose logging |
 | `--help` | Show usage help |
+
+## Configuration
+
+Diffuse supports extensive configuration to customize risk scoring, thresholds, and analysis behavior. Configuration can be provided via:
+
+- `diffuse.config.json` or `diffuse.config.js` in your project root
+- `.diffuserc.json` or `.diffuserc.js` in your project root  
+- `diffuse` key in your `package.json`
+- `--config <file>` CLI option to specify a custom path
+
+### Configuration Options
+
+```json
+{
+  "riskWeights": {
+    "PROPS_CHANGED": 15,
+    "RETURN_TYPE_CHANGED": 12,
+    "MISSING_TEST": 6,
+    "LARGE_CHANGE": 10
+  },
+  "thresholds": {
+    "highRisk": 70,
+    "mediumRisk": 45,
+    "veryHighRisk": 90,
+    "largeChangePercentage": 25
+  },
+  "exclusions": {
+    "files": ["*.generated.ts", "*.d.ts"],
+    "directories": ["vendor", "third-party"],
+    "testPatterns": ["*.integration.test.ts"]
+  },
+  "analysis": {
+    "includeTestCoverage": true,
+    "includeUsageGraph": true,
+    "maxFilesInGraph": 1000
+  },
+  "reporting": {
+    "includeSuggestions": true,
+    "verboseStats": false,
+    "customSuggestions": {
+      "PROPS_CHANGED": "Custom suggestion: Review all component consumers and update prop types accordingly."
+    }
+  }
+}
+```
+
+#### Risk Weights
+Customize the point values assigned to different risk factors:
+- `PROPS_CHANGED`: Points for TypeScript interface/type changes (default: 10)
+- `RETURN_TYPE_CHANGED`: Points for function return type changes (default: 8) 
+- `MISSING_TEST`: Points when tests aren't updated for changed code (default: 4)
+- `LARGE_CHANGE`: Points for files with significant line changes (default: 7)
+
+#### Thresholds
+Configure risk level boundaries:
+- `highRisk`: Score threshold for high risk classification (default: 60)
+- `mediumRisk`: Score threshold for medium risk classification (default: 40)
+- `veryHighRisk`: Score threshold for very high risk classification (default: 80)
+- `largeChangePercentage`: Percentage of file changes to trigger large change penalty (default: 20)
+
+#### Exclusions
+Specify files and directories to exclude from analysis:
+- `files`: Glob patterns for files to exclude
+- `directories`: Glob patterns for directories to exclude  
+- `testPatterns`: Additional test file patterns beyond defaults
+
+#### Analysis Settings
+Control analysis behavior:
+- `includeTestCoverage`: Whether to analyze test coverage (default: true)
+- `includeUsageGraph`: Whether to build usage dependency graph (default: true)
+- `maxFilesInGraph`: Limit files analyzed in usage graph for performance
+
+#### Reporting Options
+Customize report output:
+- `includeSuggestions`: Show actionable suggestions (default: true)
+- `verboseStats`: Show detailed file statistics (default: false)
+- `customSuggestions`: Override default suggestion messages for risk factors
+
+### Example Usage with Config
+
+```bash
+# Use default config file locations
+npx diffuse --since origin/main
+
+# Specify custom config file
+npx diffuse --since origin/main --config ./custom-diffuse.config.json
+
+# Config in package.json
+{
+  "diffuse": {
+    "thresholds": {
+      "highRisk": 50
+    }
+  }
+}
+```
 
 ## Demo
 
@@ -187,7 +287,7 @@ No test changes for src/utils/userUtils.ts (4.00 pts)
 
 - Full vanilla JavaScript support
 - Python support
-- Configurable score weights and rules (like exempting directories from test flags)
+- ✅ Configurable score weights and rules (like exempting directories from test flags)
 - Subtree spread scoring (temporarily disabled until project structure conventions are better defined)
 - Set up optional PR block for score over x
 - Cross-repo analysis with GitHub App integration

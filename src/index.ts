@@ -3,11 +3,11 @@ import path from 'path';
 import fs from 'fs';
 import { buildUsageGraph, calculateGraphScore } from './lib/buildUsageGraph.js';
 import { analyzeBreakingChanges } from './lib/analyzeBreakingChanges.js';
-import { readFileSync } from "fs";
 import { generateReport } from "./lib/report.js";
 import { detectGithubContext } from "./lib/setup/detectGithub.js";
 import { loadProjectWithFallback, findRepoRoot } from "./lib/setup/loadProjectWithFallback.js";
 import { GitService } from "./lib/services/index.js";
+import { loadConfig } from "./lib/config.js";
 
 async function runCLI() {
   const program = new Command();
@@ -17,6 +17,7 @@ async function runCLI() {
     .description("Static risk analysis tool for code changes - analyzes breaking changes and usage patterns within a single repository.")
     .option("-s, --since <branch>", "Git base branch or ref to compare against (e.g., main)")
     .option("-o, --output <file>", "Write output to file")
+    .option("-c, --config <file>", "Path to configuration file")
     .option("--fail-on-high-risk", "Exit with code 1 if high risk detected")
     .option("--format <type>", "Report format: 'markdown' or 'plain' (default: plain)", "plain")
     .option('--no-suggestions', 'Suppress actionable suggestions in the output')
@@ -26,6 +27,15 @@ async function runCLI() {
     .parse(process.argv);
 
   const options = program.opts();
+
+  // Load configuration
+  let config;
+  try {
+    config = loadConfig(options.config);
+  } catch (error) {
+    console.error(`Configuration error: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 
   const context = detectGithubContext();
 
@@ -85,9 +95,9 @@ async function runCLI() {
       },
       verbose: options.verbose || false,
       includeTests: options.tests
-    });
+    }, config);
 
-    const graphScore = calculateGraphScore(graph, changedFiles, context);
+    const graphScore = calculateGraphScore(graph, changedFiles, context, { verbose: options.verbose || false }, config);
     const totalRiskScore = breakingChanges.totalScore + graphScore.totalScore;
 
     const data = {
@@ -97,7 +107,7 @@ async function runCLI() {
       lineStats,
     }
     
-    const report = generateReport(data, context, options);
+    const report = generateReport(data, context, options, config);
     console.log(report);
    
     if (options.output) {
