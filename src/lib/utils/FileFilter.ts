@@ -1,4 +1,3 @@
-import path from 'path';
 import { SUPPORTED_EXTENSIONS } from '../constants.js';
 
 export interface FileFilterOptions {
@@ -46,8 +45,8 @@ isTestFile(filePath: string): boolean {
     if (!this.options.excludeNodeModules) return false;
     
     const normalizedPath = filePath.replace(/\\/g, '/');
-    return normalizedPath.includes('/node_modules/') || 
-           normalizedPath.includes('\\node_modules\\');
+    return normalizedPath.includes('node_modules/') || 
+           normalizedPath.startsWith('node_modules/');
   }
 
   /**
@@ -97,18 +96,17 @@ isTestFile(filePath: string): boolean {
    */
   shouldInclude(filePath: string): boolean {
     // Check if file has supported extension
-    
     if (!this.hasSupportedExtension(filePath)) {
       return false;
     }
     
     // Check if file is in node_modules
-    if (this.isInNodeModules(filePath)) {
+    if (this.options.excludeNodeModules && this.isInNodeModules(filePath)) {
       return false;
     }
     
     // Check if file is a test file
-    if (this.isTestFile(filePath)) {
+    if (this.options.excludeTestFiles && this.isTestFile(filePath)) {
       return false;
     }
     
@@ -140,11 +138,11 @@ isTestFile(filePath: string): boolean {
       return `Unsupported extension. Supported: ${this.options.supportedExtensions.join(', ')}`;
     }
     
-    if (this.isInNodeModules(filePath)) {
+    if (this.options.excludeNodeModules && this.isInNodeModules(filePath)) {
       return 'File is in node_modules';
     }
     
-    if (this.isTestFile(filePath)) {
+    if (this.options.excludeTestFiles && this.isTestFile(filePath)) {
       return 'File is a test file';
     }
     
@@ -178,7 +176,7 @@ isTestFile(filePath: string): boolean {
     return new FileFilter({
       excludeNodeModules: true,
       excludeTestFiles: false,
-      includePatterns: ['**/*.test.*', '**/*.spec.*', '**/__tests__/**', '**/test/**'],
+      includePatterns: ['*.test.*', '*.spec.*', '__tests__/*', 'test/*', 'tests/*'],
       supportedExtensions: SUPPORTED_EXTENSIONS,
       ...options,
     });
