@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { ScoredRisk } from './constants.js';
 import { RenderContext } from './setup/detectGithub.js';
-import { riskSuggestions, RiskFactorType, riskWeights, encodeGitHubFilePath, escapeMarkdownLinkText } from './constants.js';
+import { suggestions, RiskFactorType, riskWeights, encodeGitHubFilePath, escapeMarkdownLinkText } from './constants.js';
 import { ResolvedConfig } from './config.js';
 
 
@@ -21,7 +21,7 @@ function riskLevel(score: number, mode: 'terminal' | 'markdown' = 'terminal', co
   }
 }
 
-function extractSummary(fileRisks: Record<string, { total: number; risks: ScoredRisk[] }>, lineStats: Record<string, { added: number, removed: number, totalLines: number }> = {}, config?: ResolvedConfig) {
+function extractSummary(fileRisks: Record<string, { total: number; risks: ScoredRisk[] }>, lineStats: Record<string, { added: number, removed: number, totalLines: number }> = {}, config: ResolvedConfig) {
   const LARGE_CHANGE_PERCENTAGE_THRESHOLD = config?.thresholds.largeChangePercentage ?? 20;
   
   const finalScores = Object.entries(fileRisks).map(([file, { total, risks }]) => {
@@ -31,7 +31,7 @@ function extractSummary(fileRisks: Record<string, { total: number; risks: Scored
     
     let finalScore = total;
     if (percentageChanged > LARGE_CHANGE_PERCENTAGE_THRESHOLD) {
-      finalScore += riskWeights[RiskFactorType.LargeChange];
+      finalScore += config.riskWeights[RiskFactorType.LargeChange];
     }
     
     return { file, finalScore };
@@ -49,7 +49,7 @@ function extractSummary(fileRisks: Record<string, { total: number; risks: Scored
       if (r.factor === RiskFactorType.ReturnTypeChanged) returnTypeChanges++;
       if (r.factor === RiskFactorType.MissingTest) missingTests++;
       if (r.factor === RiskFactorType.ImportedInFiles) {
-        const count = Math.round(r.points / riskWeights[RiskFactorType.ImportedInFiles]);
+        const count = Math.round((r.points || 1)/config.riskWeights[RiskFactorType.ImportedInFiles]); // TODO: This is a little hacky. I know r.points will be defined but ts doesn't
         if (count >= 3) {
           filesWithMultiImports.add(r.subject);
         }
@@ -60,7 +60,7 @@ function extractSummary(fileRisks: Record<string, { total: number; risks: Scored
   return { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles: finalScores.length };
 }
 
-function getFileRisks(data: any): Record<string, { total: number; risks: ScoredRisk[] }> {
+function getFileRisks(data: any, config: ResolvedConfig): Record<string, { total: number; risks: ScoredRisk[] }> {
   const fileRisks: Record<string, { total: number; risks: ScoredRisk[] }> = {};
   const allScores = [
     ...Object.entries(data.breakingChanges.scores || {}).flatMap(([file, obj]: [string, any]) =>
@@ -74,15 +74,17 @@ function getFileRisks(data: any): Record<string, { total: number; risks: ScoredR
 
   for (const { file, score } of allScores) {
     if (!fileRisks[file]) fileRisks[file] = { total: 0, risks: [] };
-    fileRisks[file].total += score.points;
+    fileRisks[file].total += config.riskWeights[score.factor as RiskFactorType] || 0;
+    score.points = config.riskWeights[score.factor as RiskFactorType] || 0; // Ensure points are set
+    score.suggestion = config.reporting.suggestions[score.factor as RiskFactorType] || suggestions[score.factor as RiskFactorType]; // TODO: remove explanation from initial calculation
     fileRisks[file].risks.push(score);
   }
 
   return fileRisks;
 }
 // TODO: if we omit tests, we end up teling users we analyzed a smaller number of files than we did. Maybe remove suggestion and add 0 points but still return the file?
-export function generateTerminalReport(data: any, options?: { suggestions?: boolean, verbose?: boolean, tests?: boolean }, config?: ResolvedConfig): string {
-  const fileRisks = getFileRisks(data);
+export function generateTerminalReport(data: any, config: ResolvedConfig, options?: { suggestions?: boolean, verbose?: boolean, tests?: boolean }): string {
+  const fileRisks = getFileRisks(data, config);
   const lineStats = data.lineStats || {};
   const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats, config);
   
@@ -94,7 +96,7 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
     
     let finalScore = total;
     if (percentageChanged > 20) {
-      finalScore += riskWeights[RiskFactorType.LargeChange];
+      finalScore += config.riskWeights[RiskFactorType.LargeChange];
     }
     
     return { file, finalScore, total, risks };
@@ -137,8 +139,9 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
         {
           subject: file,
           factor: RiskFactorType.LargeChange,
-          points: riskWeights[RiskFactorType.LargeChange],
+          points: config.riskWeights[RiskFactorType.LargeChange],
           explanation: `Large change: +${stats.added}/-${stats.removed} lines (${percentageChanged.toFixed(1)}% of file)`,
+          suggestion: config.reporting.suggestions[RiskFactorType.LargeChange],
         },
       ];
     }
@@ -146,16 +149,14 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
     output += `Lines changed: +${chalk.green(stats.added)}/-${chalk.red(stats.removed)} (${percentageChanged.toFixed(1)}% of ${stats.totalLines} lines)\n`;
     output += `Total Score: ${chalk.bold(finalScore.toFixed(2))} ${riskLevel(finalScore, 'terminal', config)}\n`;
     for (const risk of fileRisksWithLarge) {
-      const importCount = Math.round(risk.points / riskWeights[RiskFactorType.ImportedInFiles]);
-      let suggestion = '';
+      const importCount = Math.round(risk?.points || 2 / config.riskWeights[RiskFactorType.ImportedInFiles]); //TODO FIX THIS
+      let suggestion = risk.suggestion || '';
 
       if (risk.factor === RiskFactorType.ImportedInFiles && importCount >= 3) {
-        suggestion = riskSuggestions[RiskFactorType.ImportedInFiles];
-      } else if (risk.factor !== RiskFactorType.ImportedInFiles) {
-        suggestion = riskSuggestions[risk.factor];
+        suggestion = config?.reporting?.suggestions[RiskFactorType.ImportedInFiles] || suggestions[RiskFactorType.ImportedInFiles];
       }
 
-      output += `${risk.explanation} ${chalk.dim(`(${risk.points.toFixed(2)} pts)`)}\n`;
+      output += `${risk.explanation} ${chalk.dim(`(${risk?.points?.toFixed(2)} pts)`)}\n`;
       if (options?.suggestions && suggestion) {
         output += `${chalk.blue(`  -${suggestion}`)}\n`;
       }
@@ -168,8 +169,9 @@ export function generateTerminalReport(data: any, options?: { suggestions?: bool
   return output;
 }
 
-export function generateMarkdownReport(data: any, context?: RenderContext, options?: { suggestions?: boolean, tests?: boolean, verbose?: boolean }, config?: ResolvedConfig): string {
-  const fileRisks = getFileRisks(data);
+
+export function generateMarkdownReport(data: any, config: ResolvedConfig, context?: RenderContext, options?: { suggestions?: boolean, tests?: boolean, verbose?: boolean }): string {
+  const fileRisks = getFileRisks(data, config);
   const lineStats = data.lineStats || {};
   const { topFile, returnTypeChanges, missingTests, filesWithMultiImports, totalFiles } = extractSummary(fileRisks, lineStats, config);
   
@@ -180,8 +182,8 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
     const percentageChanged = stats.totalLines > 0 ? (totalChanged / stats.totalLines) * 100 : 0;
     
     let finalScore = total;
-    if (percentageChanged > 20) { // LARGE_CHANGE_PERCENTAGE_THRESHOLD
-      finalScore += 7; // riskWeights[RiskFactorType.LargeChange]
+    if (percentageChanged > LARGE_CHANGE_PERCENTAGE_THRESHOLD) { // LARGE_CHANGE_PERCENTAGE_THRESHOLD
+      finalScore += config.riskWeights[RiskFactorType.LargeChange];
     }
     
     return { file, finalScore, total, risks };
@@ -224,8 +226,9 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
         {
           subject: file,
           factor: RiskFactorType.LargeChange,
-          points: riskWeights[RiskFactorType.LargeChange],
+          points: config.riskWeights[RiskFactorType.LargeChange],
           explanation: `Large change: +${stats.added}/-${stats.removed} lines (${percentageChanged.toFixed(1)}% of file)`,
+          suggestion: config.reporting.suggestions[RiskFactorType.LargeChange],
         },
       ];
     }
@@ -233,13 +236,13 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
     output += `**Lines changed:** +${stats.added}/-${stats.removed} (${percentageChanged.toFixed(1)}% of ${stats.totalLines} lines)\n`;
     output += `**Total Score:** ${finalScore.toFixed(2)} — ${riskLevel(finalScore, 'markdown', config)}\n\n`;
     for (const risk of fileRisksWithLarge) {
-      const importCount = Math.round(risk.points / riskWeights[RiskFactorType.ImportedInFiles]);
+      const importCount = Math.round(risk.points || 1 / riskWeights[RiskFactorType.ImportedInFiles]); // TODO: hacky
       let suggestion = '';
 
       if (risk.factor === RiskFactorType.ImportedInFiles && importCount >= 3) {
-        suggestion = riskSuggestions[RiskFactorType.ImportedInFiles];
+        suggestion = suggestions[RiskFactorType.ImportedInFiles];
       } else if (risk.factor !== RiskFactorType.ImportedInFiles) {
-        suggestion = riskSuggestions[risk.factor];
+        suggestion = risk.suggestion || suggestions[risk.factor];
       }
 
       let explanation = risk.explanation;
@@ -255,7 +258,7 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
         );
       }
 
-      output += `- ${explanation} (${risk.points.toFixed(2)} pts)\n`;
+      output += `- ${explanation} (${risk?.points?.toFixed(2)} pts)\n`;
       if (options?.suggestions && suggestion) {
         output += `  - ${suggestion}\n`;
       }
@@ -267,6 +270,6 @@ export function generateMarkdownReport(data: any, context?: RenderContext, optio
   return output;
 }
 
-export function generateReport(data: any, context?: RenderContext, options?: { suggestions?: boolean }, config?: ResolvedConfig): string {
-  return context?.repoUrl ? generateMarkdownReport(data, context, options, config) : generateTerminalReport(data, options, config);
+export function generateReport(data: any, config: ResolvedConfig, context?: RenderContext, options?: { suggestions?: boolean }): string {
+  return context?.repoUrl ? generateMarkdownReport(data, config, context, options) : generateTerminalReport(data, config, options);
 }

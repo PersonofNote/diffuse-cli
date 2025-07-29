@@ -24,7 +24,7 @@
   "reporting": {
     "includeSuggestions": true,
     "verboseStats": false,
-    "customSuggestions": {
+    "suggestions": {
       "PROPS_CHANGED": "Custom suggestion: Review all component consumers and update prop types accordingly."
     }
   }

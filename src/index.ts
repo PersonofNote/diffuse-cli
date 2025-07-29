@@ -107,7 +107,7 @@ async function runCLI() {
       lineStats,
     }
     
-    const report = generateReport(data, context, options, config);
+    const report = generateReport(data, config, context, options);
     console.log(report);
    
     if (options.output) {

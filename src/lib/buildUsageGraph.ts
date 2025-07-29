@@ -195,7 +195,7 @@ export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], c
       scores.push({
         subject: file,
         factor: RiskFactorType.PartialImport,
-        points: 0,
+        //points: 0,
         explanation: `Dynamic or malformed import`,
       });
     }
@@ -210,7 +210,7 @@ export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], c
       scores.push({
         subject: file,
         factor: RiskFactorType.UsedInMultipleTrees,
-        points: config?.riskWeights[RiskFactorType.UsedInMultipleTrees] ?? 5,
+        //points: config?.riskWeights[RiskFactorType.UsedInMultipleTrees] ?? 5,
         explanation: `Used across ${graph[absPath]?.subsystem.length} project areas ${options?.verbose ? `(${[...graph[absPath]?.subsystem].join(', ')})` : ''}`,
       });
     }
@@ -218,7 +218,7 @@ export function calculateGraphScore(graph: UsageGraph, changedFiles: string[], c
     scores.push({
       subject: file,
       factor: RiskFactorType.ImportedInFiles,
-      points: radiusScore,
+      //points: radiusScore,
       explanation: `Imported by ${list}`,
     });
     total += radiusScore;

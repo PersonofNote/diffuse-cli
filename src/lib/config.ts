@@ -45,7 +45,7 @@ export interface DiffuseConfig {
     /** Whether to show verbose file statistics (default: false) */
     verboseStats?: boolean;
     /** Custom suggestion messages for risk factors */
-    customSuggestions?: Partial<Record<RiskFactorType, string>>;
+    suggestions?: Partial<Record<RiskFactorType, string>>;
   };
 }
 
@@ -79,7 +79,7 @@ export interface ResolvedConfig {
   reporting: {
     includeSuggestions: boolean;
     verboseStats: boolean;
-    customSuggestions: Partial<Record<RiskFactorType, string>>;
+    suggestions: Partial<Record<RiskFactorType, string>>;
   };
 }
 
@@ -104,7 +104,7 @@ const DEFAULT_CONFIG: ResolvedConfig = {
   reporting: {
     includeSuggestions: true,
     verboseStats: false,
-    customSuggestions: {},
+    suggestions: {},
   },
 };
 
@@ -166,7 +166,7 @@ export function loadConfig(configPath?: string): ResolvedConfig {
     reporting: {
       includeSuggestions: userConfig.reporting?.includeSuggestions ?? DEFAULT_CONFIG.reporting.includeSuggestions,
       verboseStats: userConfig.reporting?.verboseStats ?? DEFAULT_CONFIG.reporting.verboseStats,
-      customSuggestions: { ...DEFAULT_CONFIG.reporting.customSuggestions, ...userConfig.reporting?.customSuggestions },
+      suggestions: { ...DEFAULT_CONFIG.reporting.suggestions, ...userConfig.reporting?.suggestions },
     },
   };
   

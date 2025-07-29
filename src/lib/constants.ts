@@ -49,11 +49,12 @@ export interface RiskInput {
 export interface ScoredRisk {
   subject: string;
   factor: RiskFactorType;
-  points: number;
-  explanation: string;
+  explanation: string; // TODO: get rid of this and calculate in report
+  points?: number;
+  suggestion?: string;
 }
 
-export const riskSuggestions: Record<RiskFactorType, string> = {
+export const suggestions: Record<RiskFactorType, string> = {
   [RiskFactorType.JSXEventChange]: "Test interactions or wrap handler in a stable callback if behavior changed.",
   [RiskFactorType.PropsChanged]: "Ensure consuming components still function correctly; consider adding story/test cases.",
   [RiskFactorType.ReturnTypeChanged]: "Review all consumers to confirm they still handle the new return shape.",

@@ -81,7 +81,7 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileRemoved,
-            points: config.riskWeights[RiskFactorType.FileRemoved],
+            //points: config.riskWeights[RiskFactorType.FileRemoved],
             explanation: `File \`${file.path}\` was removed`,
           }
         ]
@@ -98,7 +98,7 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileAdded,
-            points: config.riskWeights[RiskFactorType.FileAdded],
+            //points: config.riskWeights[RiskFactorType.FileAdded],
             explanation: `File \`${file.path}\` was added`,
           }
         ]
@@ -114,7 +114,7 @@ export function analyzeBreakingChanges(
           {
             subject: file.path,
             factor: RiskFactorType.FileRenamed,
-            points: config.riskWeights[RiskFactorType.FileRenamed],
+            //points: config.riskWeights[RiskFactorType.FileRenamed],
             explanation: `File \`${file.path}\` was renamed from \`${file.renamedFrom}\``,
           }
         ]
@@ -158,7 +158,7 @@ export function analyzeBreakingChanges(
           scores[file.path].scores.push({
             subject: file.path,
             factor: RiskFactorType.MissingTest,
-            points: config.riskWeights[RiskFactorType.MissingTest],
+            //points: config.riskWeights[RiskFactorType.MissingTest],
             explanation: `No associated test changes`,
           });
         } else { 
@@ -167,7 +167,7 @@ export function analyzeBreakingChanges(
               {
                 subject: file.path,
                 factor: RiskFactorType.MissingTest,
-                points: config.riskWeights[RiskFactorType.MissingTest],
+                //points: config.riskWeights[RiskFactorType.MissingTest],
                 explanation: `No associated test changes`,
               }
             ]
@@ -274,7 +274,7 @@ export function analyzeFile(
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportAdded,
-        points: config.riskWeights[RiskFactorType.ExportAdded],
+        // config.riskWeights[RiskFactorType.ExportAdded],
         explanation: `Export \`${name}\` was added`,
       });
       fileScore += config.riskWeights[RiskFactorType.ExportAdded];
@@ -288,7 +288,7 @@ export function analyzeFile(
       scores.push({
         subject: name,
         factor: RiskFactorType.ExportRemoved,
-        points: config.riskWeights[RiskFactorType.ExportRemoved],
+        //points: config.riskWeights[RiskFactorType.ExportRemoved],
         explanation: `Export \`${name}\` was removed`,
       });
       fileScore += config.riskWeights[RiskFactorType.ExportRemoved];
@@ -314,7 +314,7 @@ export function analyzeFile(
         scores.push(...changes.map(c => ({
           subject: name,
           factor: RiskFactorType.ReturnTypeChanged,
-          points: config.riskWeights[RiskFactorType.ReturnTypeChanged],
+          // config.riskWeights[RiskFactorType.ReturnTypeChanged],
           explanation: `Return type changed in \`${name}\``,
         })));
         fileScore += changes.length * config.riskWeights[RiskFactorType.ReturnTypeChanged];
@@ -330,7 +330,7 @@ export function analyzeFile(
         scores.push(...changes.map(c => ({
           subject: name,
           factor: RiskFactorType.PropsChanged,
-          points: config.riskWeights[RiskFactorType.PropsChanged],
+          //points: config.riskWeights[RiskFactorType.PropsChanged],
           explanation: `Props changed in \`${name}\``,
         })));
         fileScore += changes.length * config.riskWeights[RiskFactorType.PropsChanged];

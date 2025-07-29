@@ -45,7 +45,7 @@ These factors are aggregated and assigned weighted points, then a final score is
 TypeScript is currently the only supported language. If there's enough interest in this project, I plan to expand to fully support plain JavaScript, and then outward to Python and others.
 
 ### Planned features
-Cross-repo analysis would really help this project, but requires infrastructure, and may need to be reserved for an eventual pro tier. Also hot file analysis, flagging when a file has been involved in a bunch of recent PRs.
+Cross-repo analysis would really help this project, but requires infrastructure, and may need to be reserved for an eventual pro tier. Also hot file analysis, flagging when a file has been involved in a bunch of recent PRs. Possibly trend graphs if that's not overkill/info exhaustion.
 
 ## Installation
 
@@ -145,7 +145,7 @@ Diffuse supports extensive configuration to customize risk scoring, thresholds, 
   "reporting": {
     "includeSuggestions": true,
     "verboseStats": false,
-    "customSuggestions": {
+    "suggestions": {
       "PROPS_CHANGED": "Custom suggestion: Review all component consumers and update prop types accordingly."
     }
   }
@@ -182,7 +182,7 @@ Control analysis behavior:
 Customize report output:
 - `includeSuggestions`: Show actionable suggestions (default: true)
 - `verboseStats`: Show detailed file statistics (default: false)
-- `customSuggestions`: Override default suggestion messages for risk factors
+- `suggestions`: Override default suggestion messages for risk factors
 
 ### Example Usage with Config
 
