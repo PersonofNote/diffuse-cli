@@ -45,7 +45,20 @@ These factors are aggregated and assigned weighted points, then a final score is
 TypeScript is currently the only supported language. If there's enough interest in this project, I plan to expand to fully support plain JavaScript, and then outward to Python and others.
 
 ### Planned features
-Cross-repo analysis would really help this project, but requires infrastructure, and may need to be reserved for an eventual pro tier. Also hot file analysis, flagging when a file has been involved in a bunch of recent PRs. Possibly trend graphs if that's not overkill/info exhaustion.
+Cross-repo analysis in particular would really help this project, but requires infrastructure, and may need to be reserved for an eventual pro tier. Also hot file analysis, flagging when a file has been involved in a bunch of recent PRs. Possibly trend graphs if that's not overkill/info exhaustion.
+
+- Full vanilla JavaScript support
+- Multi-language support
+- ✅ Configurable score weights and rules (like exempting directories from test flags)
+- Subtree spread scoring (temporarily disabled until project structure conventions are better defined)
+- Set up optional PR block for score over x
+- Cross-repo analysis with GitHub App integration
+- "Hot file" detection based on PR frequency
+- Historical data analysis and trend tracking
+- Advanced analytics dashboard
+- Slack integration for notifications
+- Project-aware risk configurations Next has unique risks compared to Vite compared to whatever
+- Caching and large-repo optimizations 
 
 ## Installation
 
@@ -272,26 +285,12 @@ No test changes for src/utils/userUtils.ts (4.00 pts)
   -Add or update tests that reflect the changed behavior of this symbol.
 ```
 
-## Roadmap 
-
-- Full vanilla JavaScript support
-- Python support
-- ✅ Configurable score weights and rules (like exempting directories from test flags)
-- Subtree spread scoring (temporarily disabled until project structure conventions are better defined)
-- Set up optional PR block for score over x
-- Cross-repo analysis with GitHub App integration
-- "Hot file" detection based on PR frequency
-- Historical data analysis and trend tracking
-- Advanced analytics dashboard
-- Slack integration for notifications
-- Project-aware risk configurations Next has unique risks compared to Vite compared to whatever 
-
 
 📣 Installed Diffuse? Loved it? Hated it? [I'd love your feedback](https://docs.google.com/forms/d/e/1FAIpQLScu4x26hKju8MhxG6dhSctWDuG7A3RT0DrckzyK0E_optgZmA/viewform?usp=sharing&ouid=112100301896036939696)
 
 ## Current Limitations and Known Edge Cases
 
-This document outlines the current limitations and potential edge cases of Diffuse. Understanding these limitations will help you use the tool more effectively and set appropriate expectations.
+Diffuse is in active development. I'll update this list as I implement features, but for now see below.
 
 ### Language Support
 
