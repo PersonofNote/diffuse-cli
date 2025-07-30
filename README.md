@@ -183,6 +183,7 @@ Customize report output:
 - `includeSuggestions`: Show actionable suggestions (default: true)
 - `verboseStats`: Show detailed file statistics (default: false)
 - `suggestions`: Override default suggestion messages for risk factors
+- For full configuration, see `diffuse.config.example.json`
 
 ### Example Usage with Config
 
@@ -202,17 +203,6 @@ npx diffuse --since origin/main --config ./custom-diffuse.config.json
   }
 }
 ```
-
-## Demo
-
-See Diffuse in action in under 30 seconds:
-
-```bash
-git clone https://github.com/personofnote/diffuse.git
-cd diffuse/demo-app
-./demo.sh
-```
-
 
 
 ### Sample Output
@@ -280,7 +270,6 @@ Lines changed: +7/-2 (14.1% of 64 lines)
 Total Score: 4.00 ✅ Low Risk
 No test changes for src/utils/userUtils.ts (4.00 pts)
   -Add or update tests that reflect the changed behavior of this symbol.
-
 ```
 
 ## Roadmap 
@@ -300,4 +289,80 @@ No test changes for src/utils/userUtils.ts (4.00 pts)
 
 📣 Installed Diffuse? Loved it? Hated it? [I'd love your feedback](https://docs.google.com/forms/d/e/1FAIpQLScu4x26hKju8MhxG6dhSctWDuG7A3RT0DrckzyK0E_optgZmA/viewform?usp=sharing&ouid=112100301896036939696)
 
+## Current Limitations and Known Edge Cases
+
+This document outlines the current limitations and potential edge cases of Diffuse. Understanding these limitations will help you use the tool more effectively and set appropriate expectations.
+
+### Language Support
+
+- **TypeScript Only**: Currently, Diffuse only fully supports TypeScript files. JavaScript files are partially supported but with reduced type analysis capabilities.
+- **No Support for Other Languages**: Python, Ruby, Java, and other languages are not currently supported.
+
+### Git Integration
+
+- **Git Dependency**: Diffuse requires git to be installed and properly configured.
+- **Git Version Compatibility**: Tested primarily with Git 2.x. Older or newer versions might have compatibility issues.
+- **Large Repositories**: Performance may degrade with very large git repositories or extensive commit histories.
+- **Detached HEAD State**: Analysis might be incomplete when running in a detached HEAD state.
+- **Shallow Clones**: Limited functionality with shallow git clones as historical data might be missing.
+
+### TypeScript Analysis
+
+- **Export-Focused**: Analysis primarily focuses on exported declarations. Internal changes that don't affect exports might be missed.
+- **Complex Type Features**: Advanced TypeScript features like conditional types, mapped types, or complex type inference might not be fully analyzed.
+- **Type Widening/Narrowing Detection**: The tool attempts to detect type widening and narrowing but might miss complex cases.
+- **JSX/TSX Limitations**: While JSX/TSX files are supported, some React-specific patterns might not be fully analyzed.
+
+### Test Detection
+
+- **Conventional Test Patterns**: Test detection relies on conventional naming patterns (`*.test.ts`, `*.spec.ts`, `__tests__/`, etc.).
+- **Custom Test Frameworks**: Projects using unconventional test file organization might see false positives in "missing test" warnings.
+- **Test Coverage Analysis**: The tool checks for test file changes but doesn't perform actual test coverage analysis.
+
+### Performance Considerations
+
+- **Memory Usage**: Building the usage graph for large codebases can be memory-intensive.
+- **Analysis Time**: Initial analysis might be slow for very large projects.
+- **File Count Limits**: While there's a `maxFilesInGraph` configuration option, very large projects might still experience performance issues.
+
+### Scoring and Risk Assessment
+
+- **Subjective Weights**: The default risk weights are based on common patterns but might need adjustment for your specific project.
+- **Threshold Tuning**: Risk level thresholds (high, medium, low) might need tuning based on your team's risk tolerance.
+- **False Positives**: Some changes might be flagged as risky even when they're intentional and well-tested.
+- **Context Awareness**: The tool doesn't understand the semantic meaning of your code or business logic.
+
+### File System and Path Handling
+
+- **Path Normalization**: While the tool attempts to normalize paths, there might be edge cases on different operating systems.
+- **Special Characters**: Files with special characters in paths might not be handled correctly.
+- **Symlinks**: Limited support for symlinked files or directories.
+
+### Configuration
+
+- **Limited Validation**: Configuration options have limited validation, so incorrect values might lead to unexpected behavior.
+- **Default Settings**: Default settings are optimized for typical TypeScript projects but might not be ideal for all project types.
+
+### Error Handling
+
+- **Dependency Errors**: I assume that anyone using the tool has Git and Typescript set up, and issues with Git or the TypeScript compiler might not produce clear error messages.
+
+### Monorepo Support
+
+- **Single Repository Focus**: Diffuse is designed to analyze a single repository at a time for now.
+- **Limited Workspace Awareness**: In monorepos, cross-package dependencies might not be fully analyzed.
+
+## Planned Improvements
+
+Many of these limitations are on our roadmap for improvement:
+
+- Support for additional languages
+- Improved performance for large codebases
+- Better monorepo support
+- Enhanced test coverage analysis
+- Cross-repository dependency analysis
+
+## Reporting Issues
+
+If you encounter behavior that seems incorrect or have suggestions for improvements, please [open an issue](https://github.com/personofnote/diffuse/issues) with a detailed description and, if possible, a minimal reproduction case.
 
