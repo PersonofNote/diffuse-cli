@@ -1,6 +1,6 @@
 {
   "name": "@personofnote/diffuse",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": false,
   "license": "MIT",
   "description": "Static risk analysis tool for code changes - surfaces breaking changes and usage patterns",
